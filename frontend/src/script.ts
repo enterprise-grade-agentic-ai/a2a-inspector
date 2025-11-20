@@ -136,6 +136,12 @@ document.addEventListener('DOMContentLoaded', () => {
   const chatInput = document.getElementById('chat-input') as HTMLInputElement;
   const sendBtn = document.getElementById('send-btn') as HTMLButtonElement;
   const chatMessages = document.getElementById('chat-messages') as HTMLElement;
+  const multiTurnCheckbox = document.getElementById(
+    'multi-turn-checkbox',
+  ) as HTMLInputElement;
+  const multiTurnLabel = document.getElementById(
+    'multi-turn-label',
+  ) as HTMLLabelElement;
   const debugConsole = document.getElementById('debug-console') as HTMLElement;
   const debugHandle = document.getElementById('debug-handle') as HTMLElement;
   const debugContent = document.getElementById('debug-content') as HTMLElement;
@@ -162,6 +168,7 @@ document.addEventListener('DOMContentLoaded', () => {
   ) as HTMLElement;
 
   let contextId: string | null = null;
+  let taskId: string | null = null;
   let isConnected = false;
   let supportedInputModes: string[] = ['text/plain'];
   let supportedOutputModes: string[] = ['text/plain'];
@@ -557,6 +564,13 @@ document.addEventListener('DOMContentLoaded', () => {
     chatInput.disabled = true;
     sendBtn.disabled = true;
 
+    // Hide and disable the use-taskid checkbox and clear chat messages
+    if (multiTurnLabel && multiTurnCheckbox) {
+      multiTurnLabel.classList.add('hidden');
+      multiTurnCheckbox.disabled = true;
+      multiTurnCheckbox.checked = false;
+    }
+
     const customHeaders = getCustomHeaders();
     const requestHeaders = {
       'Content-Type': 'application/json',
@@ -738,6 +752,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const resetSession = () => {
     contextId = null;
+    taskId = null;
     chatMessages.innerHTML =
       '<p class="placeholder-text">Send a message to start a new session.</p>';
     updateSessionUI();
@@ -786,13 +801,19 @@ document.addEventListener('DOMContentLoaded', () => {
         mimeType: a.mimeType,
       }));
 
-      socket.emit('send_message', {
+      const payload: Record<string, unknown> = {
         message: sanitizedMessage,
         id: messageId,
         contextId,
         metadata,
         attachments: attachmentsToSend,
-      });
+      }
+
+      if (multiTurnCheckbox && multiTurnCheckbox.checked && taskId) {
+        payload.taskId = taskId;
+      }
+
+      socket.emit('send_message', payload);
 
       chatInput.value = '';
       attachments.length = 0;
@@ -856,6 +877,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const displayMessageId = `display-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
     messageJsonStore[displayMessageId] = event;
+
+    if (multiTurnLabel && multiTurnCheckbox) {
+      multiTurnLabel.classList.remove('hidden');
+      multiTurnCheckbox.disabled = false;
+    }
+
+    // Store previous task_id if present
+    if (event.kind === 'task') {
+      taskId = event.id;
+    }
 
     const validationErrors = event.validation_errors || [];
 
