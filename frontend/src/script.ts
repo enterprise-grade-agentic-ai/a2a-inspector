@@ -937,8 +937,17 @@ document.addEventListener('DOMContentLoaded', () => {
             );
           }
         } else if (event.status) {
-          // Only show task status if there are no artifacts
-          const statusHtml = `<span class="kind-chip kind-chip-task">${event.kind}</span> Task created with status: ${DOMPurify.sanitize(event.status.state)}`;
+          // Show message text if present, otherwise show task status state
+          const statusMessageText = event.status.message?.parts?.[0]?.text;
+          let statusHtml: string;
+          if (statusMessageText) {
+            const renderedContent = DOMPurify.sanitize(
+              marked.parse(statusMessageText) as string,
+            );
+            statusHtml = `<span class="kind-chip kind-chip-task">${event.kind}</span> ${renderedContent}`;
+          } else {
+            statusHtml = `<span class="kind-chip kind-chip-task">${event.kind}</span> Task created with status: ${DOMPurify.sanitize(event.status.state)}`;
+          }
           appendMessage(
             'agent progress',
             statusHtml,
