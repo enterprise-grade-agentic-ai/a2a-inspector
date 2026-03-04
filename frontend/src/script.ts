@@ -937,15 +937,31 @@ document.addEventListener('DOMContentLoaded', () => {
             );
           }
         } else if (event.status) {
-          // Only show task status if there are no artifacts
-          const statusHtml = `<span class="kind-chip kind-chip-task">${event.kind}</span> Task created with status: ${DOMPurify.sanitize(event.status.state)}`;
-          appendMessage(
-            'agent progress',
-            statusHtml,
-            displayMessageId,
-            true,
-            validationErrors,
-          );
+          // If there's a message with text in the status, display it as the agent response
+          const statusMessageText = event.status.message?.parts?.[0]?.text;
+          if (statusMessageText) {
+            const renderedContent = DOMPurify.sanitize(
+              marked.parse(statusMessageText) as string,
+            );
+            const messageHtml = `<span class="kind-chip kind-chip-task">${event.kind}</span> ${renderedContent}`;
+            appendMessage(
+              'agent',
+              messageHtml,
+              displayMessageId,
+              true,
+              validationErrors,
+            );
+          } else {
+            // Only show task status if there are no artifacts and no message text
+            const statusHtml = `<span class="kind-chip kind-chip-task">${event.kind}</span> Task created with status: ${DOMPurify.sanitize(event.status.state)}`;
+            appendMessage(
+              'agent progress',
+              statusHtml,
+              displayMessageId,
+              true,
+              validationErrors,
+            );
+          }
         }
         break;
       }
